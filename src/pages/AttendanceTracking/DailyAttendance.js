@@ -52,14 +52,11 @@ function DailyAttendance() {
   const onSubmit = async (data) => {
     const { chosenDate } = data;
     try {
-      const res = await axios.get(
-        "http://localhost:5000/api/users/attendance",
-        {
-          params: {
-            cDate: chosenDate,
-          },
-        }
-      );
+      const res = await axios.get("http://localhost:5000/api/employees/lates", {
+        params: {
+          cDate: chosenDate,
+        },
+      });
       setUsers(res.data);
 
       const zafDate = new Date(chosenDate);
@@ -78,7 +75,7 @@ function DailyAttendance() {
 
   useEffect(() => {
     const arrayCount = [];
-    users?.map((el) => arrayCount.push(el.timestamps.length));
+    users?.map((el) => arrayCount.push(el.recordTime.length));
     setTsLength(Math.max(...arrayCount));
   });
 
@@ -165,25 +162,61 @@ function DailyAttendance() {
 
               <TableBody>
                 {users?.map((record) => (
-                  <TableRow key={record.id}>
+                  <TableRow key={record.deviceUserId}>
                     <TableCell
                       sx={{ width: 200, minWidth: 200, maxWidth: 200 }}
                       component="th"
                       scope="row"
                     >
                       {statechEmployees.map(
-                        (em) => em.id === Number(record.id) && em.name
+                        (em) => em.id === Number(record.deviceUserId) && em.name
                       )}
                     </TableCell>
 
-                    {record.timestamps.map((ts, index) => (
+                    {record.recordTime.map((ts, index) => (
                       <TableCell
                         sx={{ width: 50, minWidth: 50, maxWidth: 50 }}
                         align="right"
                         key={index}
                       >
-                        {index === 0 ? (
-                          ts.split("T")[1].slice(0, 5) > "10:10" ? (
+                        {index === 0
+                          ? (() => {
+                              // Parse timestamp
+                              const date = new Date(ts);
+
+                              // Format time in PH timezone
+                              const formattedTime = new Intl.DateTimeFormat(
+                                "en-US",
+                                {
+                                  hour12: false,
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  timeZone: "Asia/Manila",
+                                }
+                              ).format(date);
+
+                              return formattedTime > "10:10" ? (
+                                <Typography
+                                  sx={{ color: "red", fontWeight: 600 }}
+                                >
+                                  {formattedTime}
+                                </Typography>
+                              ) : (
+                                formattedTime
+                              );
+                            })()
+                          : (() => {
+                              const date = new Date(ts);
+                              return new Intl.DateTimeFormat("en-US", {
+                                hour12: false,
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                timeZone: "Asia/Manila",
+                              }).format(date);
+                            })()}
+
+                        {/* {index === 0 ? (
+                          ts.split("T")[1].slice(0, 5) > "02:10" ? (
                             <Typography sx={{ color: "red", fontWeight: 600 }}>
                               {ts.split("T")[1].slice(0, 5)}
                             </Typography>
@@ -192,7 +225,7 @@ function DailyAttendance() {
                           )
                         ) : (
                           ts.split("T")[1].slice(0, 5)
-                        )}
+                        )} */}
                       </TableCell>
                     ))}
                   </TableRow>

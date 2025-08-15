@@ -26,7 +26,7 @@ import Clock from "../../components/Clock";
 import { statechEmployees } from "../../arrays/employees";
 import ContentTitle from "../../components/ContentTitle";
 
-function OvertimeRequests() {
+function DailyAttendance() {
   const [tsLength, setTsLength] = useState();
   const [formatDate, setFormatdate] = useState();
   const [users, setUsers] = useState();
@@ -209,4 +209,4 @@ function OvertimeRequests() {
   );
 }
 
-export default OvertimeRequests;
+export default DailyAttendance;
