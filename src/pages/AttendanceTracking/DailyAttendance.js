@@ -29,18 +29,7 @@ import ContentTitle from "../../components/ContentTitle";
 function DailyAttendance() {
   const [tsLength, setTsLength] = useState();
   const [formatDate, setFormatdate] = useState();
-  const [users, setUsers] = useState();
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await axios.get("http://localhost:3001/attendance");
-        setUsers(res.data);
-      } catch (err) {
-        console.error("Export failed:", err?.message || err);
-      }
-    })();
-  }, []);
+  const [attendance, setAttendance] = useState([]);
 
   const { control, handleSubmit, watch } = useForm({
     defaultValues: {
@@ -50,34 +39,47 @@ function DailyAttendance() {
   });
 
   const onSubmit = async (data) => {
-    const { chosenDate } = data;
     try {
-      const res = await axios.get("http://localhost:5000/api/employees/lates", {
-        params: {
-          cDate: chosenDate,
-        },
-      });
-      setUsers(res.data);
+      const res = await axios.get(
+        "http://localhost:5000/api/employees/daily-attendance"
+      );
 
-      const zafDate = new Date(chosenDate);
+      const startDate = new Date(`${data.chosenDate}T00:00:00+08:00`);
+      const endDate = new Date(`${data.chosenDate}T23:59:59+08:00`);
 
-      const formatted = zafDate.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
+      const result = Object.keys(res.data)
+        .map((key) => {
+          const logsForDay = res.data[key].filter((log) => {
+            const ts = new Date(log.recordTime);
+            return ts >= startDate && ts <= endDate;
+          });
 
-      setFormatdate(formatted);
+          if (logsForDay.length > 0) {
+            // format times
+            const times = logsForDay.map((log) =>
+              new Date(log.recordTime).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true, // 24-hour format
+              })
+            );
+
+            return {
+              deviceUserId: key,
+              times, // e.g. ["08:05", "12:01", "13:02", "17:30"]
+            };
+          }
+          return null;
+        })
+        .filter(Boolean);
+
+      setAttendance(result);
     } catch (err) {
       console.error(err);
     }
   };
 
-  useEffect(() => {
-    const arrayCount = [];
-    users?.map((el) => arrayCount.push(el.recordTime.length));
-    setTsLength(Math.max(...arrayCount));
-  });
+  console.log(attendance);
 
   return (
     <>
@@ -131,113 +133,63 @@ function DailyAttendance() {
         </form>
       </Stack>
 
-      <Box>
-        {users?.length === 0 ? (
-          <Typography align="center">
-            {users?.length > 0 || "No Record Found"}
-          </Typography>
-        ) : (
-          <TableContainer component={Paper}>
-            <Table
-              sx={{ minWidth: 650, tableLayout: "fixed" }}
-              size="small"
-              aria-label="a dense table"
-              variant="filled"
-            >
-              {users?.length > 0 && (
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: "bold" }}>
-                      Employee Name
-                    </TableCell>
-                    {Array.from({ length: tsLength }, (_, i) => (
-                      <TableCell
-                        sx={{ fontWeight: "bold" }}
-                        align="right"
-                      >{`Time In ${i + 1}`}</TableCell>
-                    ))}
-                  </TableRow>
-                </TableHead>
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Employee</TableCell>
+              {/* dynamically generate columns based on max times */}
+              {Array.from(
+                {
+                  length: Math.max(
+                    ...attendance.map((el) => el.times.length),
+                    0
+                  ),
+                },
+                (_, idx) => (
+                  <TableCell key={idx}>Time {idx + 1}</TableCell>
+                )
               )}
+            </TableRow>
+          </TableHead>
 
-              <TableBody>
-                {users?.map((record) => (
-                  <TableRow key={record.deviceUserId}>
-                    <TableCell
-                      sx={{ width: 200, minWidth: 200, maxWidth: 200 }}
-                      component="th"
-                      scope="row"
-                    >
-                      {statechEmployees.map(
-                        (em) => em.id === Number(record.deviceUserId) && em.name
-                      )}
-                    </TableCell>
+          <TableBody>
+            {attendance.map((el, rowIdx) => {
+              const employeeName =
+                statechEmployees.find(
+                  (em) => em.id.toString() === el.deviceUserId.toString()
+                )?.name || el.deviceUserId;
 
-                    {record.recordTime.map((ts, index) => (
+              return (
+                <TableRow key={rowIdx}>
+                  <TableCell>{employeeName}</TableCell>
+
+                  {el.times.map((time, colIdx) => {
+                    // Only check the first time-in (colIdx === 0)
+                    let isLate = false;
+
+                    if (colIdx === 0 && time) {
+                      // Convert to 24h Date object for comparison
+                      const t = new Date(`1970-01-01 ${time}`);
+                      const cutoff = new Date(`1970-01-01 10:10 AM`);
+                      isLate = t > cutoff;
+                    }
+
+                    return (
                       <TableCell
-                        sx={{ width: 50, minWidth: 50, maxWidth: 50 }}
-                        align="right"
-                        key={index}
+                        key={colIdx}
+                        sx={isLate ? { color: "red", fontWeight: "bold" } : {}}
                       >
-                        {index === 0
-                          ? (() => {
-                              // Parse timestamp
-                              const date = new Date(ts);
-
-                              // Format time in PH timezone
-                              const formattedTime = new Intl.DateTimeFormat(
-                                "en-US",
-                                {
-                                  hour12: false,
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                  timeZone: "Asia/Manila",
-                                }
-                              ).format(date);
-
-                              return formattedTime > "10:10" ? (
-                                <Typography
-                                  sx={{ color: "red", fontWeight: 600 }}
-                                >
-                                  {formattedTime}
-                                </Typography>
-                              ) : (
-                                formattedTime
-                              );
-                            })()
-                          : (() => {
-                              const date = new Date(ts);
-                              return new Intl.DateTimeFormat("en-US", {
-                                hour12: false,
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                timeZone: "Asia/Manila",
-                              }).format(date);
-                            })()}
-
-                        {/* {index === 0 ? (
-                          ts.split("T")[1].slice(0, 5) > "02:10" ? (
-                            <Typography sx={{ color: "red", fontWeight: 600 }}>
-                              {ts.split("T")[1].slice(0, 5)}
-                            </Typography>
-                          ) : (
-                            ts.split("T")[1].slice(0, 5)
-                          )
-                        ) : (
-                          ts.split("T")[1].slice(0, 5)
-                        )} */}
+                        {time}
                       </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
-      </Box>
-      {/* <Button onClick={handleClick} variant="outlined">
-        Click Me
-      </Button> */}
+                    );
+                  })}
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </TableContainer>
     </>
   );
 }
