@@ -39,7 +39,8 @@ function TardinessUndertime() {
         }
       );
 
-      const attendanceData = res.data;
+      // const attendanceData = res.data;
+      const attendanceData = res;
       const statsByEmployee = {};
 
       // Set cutoff time (10:10 AM)
@@ -94,6 +95,8 @@ function TardinessUndertime() {
       console.error(err);
     }
   };
+
+  console.log(attendance);
 
   return (
     <>

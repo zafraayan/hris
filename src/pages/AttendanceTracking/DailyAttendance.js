@@ -41,9 +41,7 @@ function DailyAttendance() {
 
   const onSubmit = async (data) => {
     try {
-      const res = await axios.get(
-        "http://localhost:5000/api/employees/daily-attendance"
-      );
+      const res = await axios.get("http://localhost:5000/api/logs");
 
       setAttendance(res.data);
     } catch (err) {
@@ -53,9 +51,7 @@ function DailyAttendance() {
 
   useEffect(() => {
     async function fetchData() {
-      const res = await axios.get(
-        "http://localhost:5000/api/employees/daily-attendance"
-      );
+      const res = await axios.get("http://localhost:5000/api/logs");
 
       setAttendance(res.data);
     }
@@ -65,7 +61,7 @@ function DailyAttendance() {
 
   useEffect(() => {
     async function fetchEmployees() {
-      const res = await axios.get("http://localhost:5000/api/employees/info");
+      const res = await axios.get("http://localhost:5000/api/employees");
 
       setEmployees(res.data);
     }
