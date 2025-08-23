@@ -13,9 +13,13 @@ import {
   TableCell,
   TableBody,
   Paper,
+  Card,
+  CardContent,
+  Chip,
 } from "@mui/material";
 import { statechEmployees } from "../../arrays/employees";
 import axios from "axios";
+import { format, parseISO } from "date-fns";
 
 function TardinessUndertime() {
   const {
@@ -26,11 +30,12 @@ function TardinessUndertime() {
 
   const [attendance, setAttendance] = useState([]);
   const [employeeStats, setEmployeeStats] = useState({}); // ✅ store lates & minutes per employee
+  const [employees, setEmployees] = useState([]);
 
   const onSubmit = async (data) => {
     try {
       const res = await axios.get(
-        "http://localhost:5000/api/employees/attendance",
+        "http://localhost:5000/api/logs/monthly-logs",
         {
           params: {
             from: data.dateStart,
@@ -39,64 +44,43 @@ function TardinessUndertime() {
         }
       );
 
-      // const attendanceData = res.data;
-      const attendanceData = res;
-      const statsByEmployee = {};
-
-      // Set cutoff time (10:10 AM)
-      const cutoffHour = 10;
-      const cutoffMinute = 10;
-
-      attendanceData.forEach((el) => {
-        const userId = String(el.deviceUserId);
-
-        // Group logs by date
-        const groupedByDate = el.recordTime.reduce((acc, time) => {
-          const dateKey = new Date(time).toLocaleDateString();
-          if (!acc[dateKey]) acc[dateKey] = [];
-          acc[dateKey].push(time);
-          return acc;
-        }, {});
-
-        let lateCount = 0;
-        let totalMinutesLate = 0;
-
-        // Check each day’s first time-in
-        Object.values(groupedByDate).forEach((times) => {
-          const firstTime = new Date(times[0]);
-
-          const isLate =
-            firstTime.getHours() > cutoffHour ||
-            (firstTime.getHours() === cutoffHour &&
-              firstTime.getMinutes() > cutoffMinute);
-
-          if (isLate) {
-            lateCount++;
-
-            // ✅ compute minutes late
-            const cutoffDate = new Date(firstTime);
-            cutoffDate.setHours(cutoffHour, cutoffMinute, 0, 0);
-
-            const diffMs = firstTime - cutoffDate;
-            const diffMins = Math.floor(diffMs / 60000);
-            totalMinutesLate += diffMins;
-          }
-        });
-
-        statsByEmployee[userId] = {
-          lates: lateCount,
-          minutes: totalMinutesLate,
-        };
-      });
-
-      setAttendance(attendanceData);
-      setEmployeeStats(statsByEmployee); // ✅ save result
+      setAttendance(res.data);
     } catch (err) {
       console.error(err);
     }
   };
 
-  console.log(attendance);
+  useEffect(() => {
+    async function fetchEmployees() {
+      const res = await axios.get("http://localhost:5000/api/employees");
+
+      setEmployees(res.data);
+    }
+
+    fetchEmployees();
+  }, []);
+
+  const groupedByUser = attendance.reduce((acc, user) => {
+    const { userSn, times } = user;
+
+    if (!acc[userSn]) {
+      acc[userSn] = {};
+    }
+
+    times.forEach((timeStr) => {
+      const dateObj = parseISO(timeStr);
+      const dateKey = format(dateObj, "yyyy-MM-dd");
+      const timeLabel = format(dateObj, "hh:mm a");
+
+      if (!acc[userSn][dateKey]) {
+        acc[userSn][dateKey] = [];
+      }
+
+      acc[userSn][dateKey].push({ raw: dateObj, label: timeLabel });
+    });
+
+    return acc;
+  }, {});
 
   return (
     <>
@@ -150,117 +134,61 @@ function TardinessUndertime() {
           </form>
         </Stack>
       </Box>
+      <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: "1fr 1fr" }}>
+        {Object.entries(groupedByUser).map(([userSn, dates]) => (
+          <Card key={userSn} sx={{ minWidth: 320 }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                {employees.map((em) => userSn === em.uid.toString() && em.name)}
+              </Typography>
 
-      {/* ===== Attendance per Employee ===== */}
-      {Array.from({ length: 26 }, (_, i) => {
-        const userId = String(i + 1);
+              {Object.entries(dates).map(([date, timeObjs]) => {
+                // sort times
+                const sortedTimes = [...timeObjs].sort((a, b) => a.raw - b.raw);
 
-        const userAttendance = attendance.filter(
-          (el) => String(el.deviceUserId) === userId
-        );
+                return (
+                  <Box key={date} sx={{ mb: 2 }}>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      gutterBottom
+                    >
+                      {format(new Date(date), "MMMM dd, yyyy")}
+                    </Typography>
 
-        if (userAttendance.length === 0) return null;
+                    <Stack direction="row" spacing={1} flexWrap="wrap">
+                      {sortedTimes.map((t, i) => {
+                        // Parse time string into comparable Date object
+                        const [hour, minute] = t.label.split(":");
+                        const isPM = t.label.toLowerCase().includes("pm");
+                        let h = parseInt(hour, 10) % 12;
+                        if (isPM) h += 12;
 
-        return (
-          <Box
-            key={userId}
-            sx={{
-              border: "solid 1px gray",
-              width: "auto",
-              margin: "auto",
-              mb: 2,
-              padding: 1,
-            }}
-          >
-            {userAttendance.map((el, idx) => {
-              const groupedByDate = el.recordTime.reduce((acc, time) => {
-                const dateKey = new Date(time).toLocaleDateString();
-                if (!acc[dateKey]) acc[dateKey] = [];
-                acc[dateKey].push(time);
-                return acc;
-              }, {});
+                        const timeValue = new Date();
+                        timeValue.setHours(h, parseInt(minute), 0, 0);
 
-              return (
-                <React.Fragment key={idx}>
-                  <Typography variant="h6" align="center">
-                    {statechEmployees.map(
-                      (emp) => emp.id.toString() === userId && emp.name
-                    )}
-                  </Typography>
-                  <Stack direction="column" spacing={2}>
-                    <TableContainer component={Paper}>
-                      <Table>
-                        <TableHead>
-                          <TableRow>
-                            <TableCell>
-                              <b>Date</b>
-                            </TableCell>
-                            <TableCell>
-                              <b>Times</b>
-                            </TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {Object.entries(groupedByDate).map(
-                            ([date, times], dIdx) => {
-                              const firstTime = new Date(times[0]);
-                              const isLate =
-                                firstTime.getHours() > 10 ||
-                                (firstTime.getHours() === 10 &&
-                                  firstTime.getMinutes() > 10);
+                        const lateThreshold = new Date();
+                        lateThreshold.setHours(10, 10, 0, 0);
 
-                              return (
-                                <TableRow key={dIdx}>
-                                  <TableCell>{date}</TableCell>
+                        const isLate = timeValue > lateThreshold;
 
-                                  {times.map((time, tIdx) => {
-                                    const formattedTime = new Date(
-                                      time
-                                    ).toLocaleTimeString([], {
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                      hour12: true,
-                                    });
-
-                                    return (
-                                      <TableCell
-                                        key={tIdx}
-                                        style={{
-                                          marginRight: "12px",
-                                          color:
-                                            tIdx === 0 && isLate
-                                              ? "red"
-                                              : "inherit",
-                                        }}
-                                      >
-                                        {formattedTime}
-                                      </TableCell>
-                                    );
-                                  })}
-                                </TableRow>
-                              );
-                            }
-                          )}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </Stack>
-
-                  {/* ✅ Show employee total lates & minutes late */}
-                  <Typography
-                    variant="body1"
-                    align="right"
-                    sx={{ mt: 1, fontWeight: "bold" }}
-                  >
-                    Total Lates: {employeeStats[userId]?.lates || 0} <br />
-                    Total Minutes Late: {employeeStats[userId]?.minutes || 0}
-                  </Typography>
-                </React.Fragment>
-              );
-            })}
-          </Box>
-        );
-      })}
+                        return (
+                          <Chip
+                            key={i}
+                            label={t.label}
+                            color={i === 0 && isLate ? "error" : "default"} // 🔴 red if late
+                            variant={i === 0 ? "filled" : "outlined"} // first-in is filled
+                          />
+                        );
+                      })}
+                    </Stack>
+                  </Box>
+                );
+              })}
+            </CardContent>
+          </Card>
+        ))}
+      </Box>
     </>
   );
 }
