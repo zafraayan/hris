@@ -1,163 +1,82 @@
-import {
-  Box,
-  Button,
-  Card,
-  Container,
-  Divider,
-  Paper,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
-  Toolbar,
-  Typography,
-} from "@mui/material";
-import { green } from "@mui/material/colors";
 import React, { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { Button, Stack } from "@mui/material";
 import axios from "axios";
-import { Controller, useForm } from "react-hook-form";
-import slogo from "../assets/slogo.jpg";
-// import { employees } from "./employees";
-import Clock from "../../components/Clock";
-import { statechEmployees } from "../../arrays/employees";
-import ContentTitle from "../../components/ContentTitle";
-import LinearProgressWithLabel from "../../components/LinearProgressWithLabel";
 
 function DailyAttendance() {
-  const [loading, setLoading] = useState(false);
-  const [attendance, setAttendance] = useState([]);
-  const [employees, setEmployees] = useState([]);
-  const [progress, setProgress] = useState(10);
-
-  const { control, handleSubmit, watch } = useForm({
-    defaultValues: {
-      startDate: "",
-      endDate: "",
-    },
-  });
+  const { handleSubmit } = useForm();
+  const [attendance, setAttendance] = useState();
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setProgress((old) => (old >= 100 ? 0 : old + 10));
-    }, 800);
-    return () => clearInterval(timer);
-  }, []);
-
-  const onSubmit = async (data) => {
-    try {
-      setLoading(true); // start loading
-      const res = await axios.get("http://localhost:5000/api/logs/daily-logs", {
-        params: {
-          chosenDate: data.date,
-        },
-      });
-      setAttendance(res.data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false); // stop loading
+    async function fetchLogs() {
+      try {
+        const res = await axios.get(
+          "http://localhost:5000/api/logs/daily-logs"
+        );
+        setAttendance(res.data); // res.data contains your logs
+      } catch (err) {
+        console.error("Error fetching logs:", err);
+      }
     }
+
+    fetchLogs();
+  }, [attendance]);
+
+  // Handler for delete
+  const handleDelete = async (data) => {
+    try {
+      const res = await axios.delete(
+        "http://localhost:5000/api/logs/delete-logs"
+      );
+      setAttendance(res.data); // res.data contains your logs
+      console.log(attendance);
+    } catch (err) {
+      console.error("Error fetching logs:", err);
+    }
+    // 👉 call your delete API here
+    // await fetch("/api/logs/delete", { method: "DELETE" });
   };
 
-  useEffect(() => {
-    async function fetchEmployees() {
-      const res = await axios.get("http://localhost:5000/api/employees");
-
-      setEmployees(res.data);
+  // Handler for update
+  const handleUpdate = async (data) => {
+    console.log("Update timestamps clicked", data);
+    try {
+      const res = await axios.post("http://localhost:5000/api/logs");
+      setAttendance(res.data); // res.data contains your logs
+    } catch (err) {
+      console.error("Error fetching logs:", err);
     }
 
-    fetchEmployees();
-  }, []);
+    // 👉 call your update API here
+    // await fetch("/api/logs/update", { method: "POST", body: JSON.stringify(data) });
+  };
 
   return (
-    <>
-      <ContentTitle />
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <Stack
-          direction={"column"}
-          spacing={2}
-          sx={{ margin: "auto", width: "50%" }}
+    <form>
+      <Stack direction="row" spacing={2}>
+        {/* Delete Button */}
+        <Button
+          type="button"
+          variant="contained"
+          color="error"
+          onClick={handleSubmit(handleDelete)}
         >
-          <Controller
-            name="date"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Select Date"
-                type="date"
-                InputLabelProps={{
-                  shrink: true,
-                }}
-              />
-            )}
-          />
-          <Button type="submit" variant="contained" color="primary">
-            Submit
-          </Button>
-        </Stack>
-      </form>
+          Delete Timestamps
+        </Button>
 
-      <Box>
-        {loading ? (
-          <Box sx={{ width: "100%" }}>
-            <LinearProgressWithLabel value={progress} />
-          </Box>
-        ) : attendance.length === 0 ? (
-          "No Record Found"
-        ) : (
-          <TableContainer component={Paper}>
-            <Table>
-              {/* Table Header */}
-              <TableHead>
-                <TableRow>
-                  <TableCell>
-                    <b>Name</b>
-                  </TableCell>
-                  <TableCell>
-                    <b>Times</b>
-                  </TableCell>
-                </TableRow>
-              </TableHead>
+        {attendance ? "Attendance is set" : "Attendance is empty"}
 
-              {/* Table Body */}
-              <TableBody>
-                {attendance.map((at, idx) =>
-                  employees.map(
-                    (em) =>
-                      at.userSn === em.uid.toString() && (
-                        <TableRow key={`${idx}-${em.uid}`}>
-                          <TableCell>{em.name}</TableCell>
-
-                          {at.times.map((el, i) => (
-                            <TableCell
-                              key={i}
-                              style={{
-                                color:
-                                  i === 0 &&
-                                  new Date(`1970-01-01 ${el}`) >
-                                    new Date(`1970-01-01 10:10 AM`)
-                                    ? "red"
-                                    : "black",
-                              }}
-                            >
-                              {el}
-                            </TableCell>
-                          ))}
-                        </TableRow>
-                      )
-                  )
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
-      </Box>
-    </>
+        {/* Update Button */}
+        <Button
+          type="button"
+          variant="contained"
+          color="primary"
+          onClick={handleSubmit(handleUpdate)}
+        >
+          Update Timestamps
+        </Button>
+      </Stack>
+    </form>
   );
 }
 
