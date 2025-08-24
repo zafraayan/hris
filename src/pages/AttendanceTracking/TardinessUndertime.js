@@ -110,7 +110,7 @@ function TardinessUndertime() {
   return (
     <>
       {/* ===== Form ===== */}
-      <Box sx={{ display: "flex", justifyContent: "center", mt: 5 }}>
+      <Box sx={{ display: "flex", justifyContent: "center" }}>
         <Stack direction="column">
           <form
             onSubmit={handleSubmit(onSubmit)}
