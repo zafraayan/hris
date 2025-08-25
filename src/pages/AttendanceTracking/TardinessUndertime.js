@@ -27,6 +27,7 @@ function TardinessUndertime() {
     register,
     handleSubmit,
     formState: { errors },
+    watch,
   } = useForm();
 
   const [attendance, setAttendance] = useState([]);
@@ -58,7 +59,7 @@ function TardinessUndertime() {
     try {
       setLoading(true); // start loading
       const res = await axios.get(
-        "http://localhost:5000/api/logs/monthly-logs",
+        "http://localhost:5000/api/logs/refetch-logs",
         {
           params: {
             from: data.dateStart,
@@ -106,6 +107,30 @@ function TardinessUndertime() {
 
     return acc;
   }, {});
+
+  async function handleFiltering() {
+    const dateOne = watch("dateStart");
+    const dateTwo = watch("dateEnd");
+
+    try {
+      setLoading(true); // start loading
+      const res = await axios.get(
+        "http://localhost:5000/api/logs/monthly-logs",
+        {
+          params: {
+            from: dateOne,
+            to: dateTwo,
+          },
+        }
+      );
+
+      setAttendance(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <>
@@ -155,8 +180,15 @@ function TardinessUndertime() {
               />
             </Stack>
 
-            <Button type="submit" variant="contained" color="primary">
+            <Button
+              onClick={handleFiltering}
+              variant="contained"
+              color="primary"
+            >
               Submit
+            </Button>
+            <Button type="submit" variant="contained" color="error">
+              Retrieve Data from the Biometric System
             </Button>
           </form>
         </Stack>
