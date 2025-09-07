@@ -14,6 +14,7 @@ export default function PayrollRun() {
   const [employees, setEmployees] = useState([]);
   const [totalDeductions, setTotalDeductions] = useState();
   const [totalEarning, setTotalEarning] = useState();
+  const [pPeriod, setPperiod] = useState();
 
   const { control, handleSubmit, watch, register, setValue } = useForm({
     defaultValues: {
@@ -30,8 +31,24 @@ export default function PayrollRun() {
   }, []);
 
   function onSubmit(data) {
-    console.log("Submitted:", data);
+    const from = watch("from");
+    const to = watch("to");
+    const range = `${new Date(from).toLocaleDateString("en-US", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    })} - ${new Date(to).toLocaleDateString("en-US", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    })}`;
+    setPperiod(range);
+    setValue("period", range);
   }
+
+  useEffect(() => {
+    onSubmit();
+  }, [watch("period")]);
 
   const handleSelect = (e) => {
     const emp = employees.find((el) => el.idNumber === e.target.value);
@@ -115,6 +132,37 @@ export default function PayrollRun() {
   return (
     <Paper sx={{ p: 2 }}>
       <form onSubmit={handleSubmit(onSubmit)}>
+        <Stack>
+          <Typography variant="h6">Payroll Period</Typography>
+          <Stack direction="row" spacing={2}>
+            <Stack direction="column" sx={{ flexGrow: 1, textAlign: "center" }}>
+              <Controller
+                name="from"
+                control={control}
+                defaultValue=""
+                render={({ field }) => <TextField {...field} type="date" />}
+              />
+              <Typography variant="h6">From</Typography>
+            </Stack>
+            <Stack direction="column" sx={{ flexGrow: 1, textAlign: "center" }}>
+              <Controller
+                name="to"
+                control={control}
+                defaultValue=""
+                render={({ field }) => <TextField {...field} type="date" />}
+              />
+              <Typography variant="h6">To</Typography>
+            </Stack>
+          </Stack>
+          <Button
+            type="submit"
+            variant="contained"
+            sx={{ m: "auto", width: "25%" }}
+          >
+            Set
+          </Button>
+        </Stack>
+        <Stack direction="row" spacing={2}></Stack>
         <Stack direction="row" spacing={2}>
           <Stack sx={{ width: "50%" }}>
             <Typography variant="h6">Earnings</Typography>
@@ -184,6 +232,22 @@ export default function PayrollRun() {
                   label="Work Days"
                   fullWidth
                   margin="normal"
+                />
+              )}
+            />
+
+            <Controller
+              name="period"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  // onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                  type="text"
+                  label="Period"
+                  fullWidth
+                  margin="normal"
+                  InputProps={{ readOnly: true }} // 👈 read-only
                 />
               )}
             />
