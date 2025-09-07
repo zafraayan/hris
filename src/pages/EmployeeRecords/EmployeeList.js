@@ -21,9 +21,7 @@ const EmployeeList = () => {
   useEffect(() => {
     (async () => {
       try {
-        const res = await axios.get(
-          "http://localhost:5000/api/users/employees"
-        );
+        const res = await axios.get("http://localhost:5000/api/employees");
         setWew(res.data);
       } catch (err) {
         console.error("Export failed:", err?.message || err);
@@ -51,7 +49,7 @@ const EmployeeList = () => {
 
           {/* Table Body */}
           <TableBody>
-            {employees.map((emp, rowIndex) => (
+            {wew?.map((emp, rowIndex) => (
               <TableRow
                 key={rowIndex}
                 sx={{
@@ -61,11 +59,12 @@ const EmployeeList = () => {
                   },
                 }}
               >
-                <TableCell>{emp.firstName}</TableCell>
-                <TableCell>{emp.middleName}</TableCell>
-                <TableCell>{emp.lastName}</TableCell>
+                <TableCell>{emp.idNumber}</TableCell>
+                <TableCell>{`${emp.firstName} ${emp.middleName} ${emp.lastName}`}</TableCell>
+                <TableCell>{emp.screenName}</TableCell>
                 <TableCell>{emp.gender}</TableCell>
-                <TableCell>{emp.civilStatus}</TableCell>
+                <TableCell>{emp.basicSalary}</TableCell>
+                {/* <TableCell>{emp.civilStatus}</TableCell>
                 <TableCell>{emp.address}</TableCell>
                 <TableCell>{emp.contactNumber}</TableCell>
                 <TableCell>{emp.email}</TableCell>
@@ -78,9 +77,8 @@ const EmployeeList = () => {
                 <TableCell>{emp.department}</TableCell>
                 <TableCell>{emp.dateHired}</TableCell>
                 <TableCell>{emp.employmentType}</TableCell>
-                <TableCell>{emp.basicSalary}</TableCell>
                 <TableCell>{emp.paymentMethod}</TableCell>
-                <TableCell>{emp.bankAccountNo}</TableCell>
+                <TableCell>{emp.bankAccountNo}</TableCell> */}
               </TableRow>
             ))}
           </TableBody>

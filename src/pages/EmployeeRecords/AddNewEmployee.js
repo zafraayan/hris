@@ -7,6 +7,7 @@ import {
   Button,
   MenuItem,
   Typography,
+  emphasize,
 } from "@mui/material";
 import ContentTitle from "../../components/ContentTitle";
 import { departments } from "../../arrays/departments";
@@ -19,11 +20,26 @@ function AddNewEmployee() {
   const onSubmit = async (data) => {
     const payload = {
       ...data,
-      tin: Number(data.tin),
-      basicSalary: Number(data.basicSalary),
-      bankAccount: Number(data.bankAccount),
-      dateOfBirth: new Date(data.dateOfBirth),
-      dateHired: new Date(data.dateHired),
+      firstName: data.firstName,
+      middleName: data.middleName,
+      lastName: data.lastName,
+      idNumber: data.idNumber,
+      screenName: data.screenName,
+      gender: data.gender,
+      status: data.status,
+      address: data.address,
+      contactNumber: data.contactNumber,
+      email: data.email,
+      sssNumber: data.sssNumber,
+      philHealth: data.philHealth,
+      pagIbig: data.pagIbig,
+      tin: data.tin,
+      dateOfBirth: data.dateOfBirth,
+      department: data.department,
+      position: data.position,
+      dateHired: data.dateHired,
+      employmentType: data.employmentType,
+      basicSalary: data.basicSalary,
     };
 
     console.log("Form Data:", payload);
@@ -63,12 +79,7 @@ function AddNewEmployee() {
                 control={control}
                 defaultValue=""
                 render={({ field }) => (
-                  <TextField
-                    {...field}
-                    label="Middle Name"
-                    fullWidth
-                    required
-                  />
+                  <TextField {...field} label="Middle Name" fullWidth />
                 )}
               />
               <Controller
@@ -82,6 +93,22 @@ function AddNewEmployee() {
             </Stack>
 
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+              <Controller
+                name="idNumber"
+                control={control}
+                defaultValue=""
+                render={({ field }) => (
+                  <TextField {...field} label="Id Number" fullWidth />
+                )}
+              />
+              <Controller
+                name="screenName"
+                control={control}
+                defaultValue=""
+                render={({ field }) => (
+                  <TextField {...field} label="Screen Name" fullWidth />
+                )}
+              />
               <Controller
                 name="gender"
                 control={control}
@@ -146,8 +173,21 @@ function AddNewEmployee() {
                 name="email"
                 control={control}
                 defaultValue=""
-                render={({ field }) => (
-                  <TextField {...field} type="email" label="Email" fullWidth />
+                rules={{
+                  pattern: {
+                    value: /^\S+@\S+\.\S+$/, // only if filled
+                    message: "Please enter a valid email address",
+                  },
+                }}
+                render={({ field, fieldState }) => (
+                  <TextField
+                    {...field}
+                    type="email"
+                    label="Email"
+                    fullWidth
+                    error={!!fieldState.error}
+                    helperText={fieldState.error?.message}
+                  />
                 )}
               />
             </Stack>
@@ -219,7 +259,6 @@ function AddNewEmployee() {
                     type="date"
                     InputLabelProps={{ shrink: true }}
                     fullWidth
-                    required
                   />
                 )}
               />
@@ -229,13 +268,7 @@ function AddNewEmployee() {
                 control={control}
                 defaultValue=""
                 render={({ field }) => (
-                  <TextField
-                    {...field}
-                    select
-                    label="Department"
-                    fullWidth
-                    required
-                  >
+                  <TextField {...field} select label="Department" fullWidth>
                     {departments.map((el) => (
                       <MenuItem value={el.department}>{el.department}</MenuItem>
                     ))}
@@ -250,13 +283,7 @@ function AddNewEmployee() {
                 control={control}
                 defaultValue=""
                 render={({ field }) => (
-                  <TextField
-                    {...field}
-                    select
-                    label="Position"
-                    fullWidth
-                    required
-                  >
+                  <TextField {...field} select label="Position" fullWidth>
                     {departments.map((el) =>
                       el.positions.map((pos) => (
                         <MenuItem value={pos}>{pos}</MenuItem>
@@ -306,35 +333,11 @@ function AddNewEmployee() {
                     label="Basic Salary"
                     type="number"
                     fullWidth
+                    required
                   />
                 )}
               />
-              <Controller
-                name="paymentMethod"
-                control={control}
-                defaultValue=""
-                render={({ field }) => (
-                  <TextField {...field} select label="Payment Method" fullWidth>
-                    <MenuItem value="Bank Transfer">Bank Transfer</MenuItem>
-                    <MenuItem value="Cash">Cash</MenuItem>
-                  </TextField>
-                )}
-              />
             </Stack>
-
-            <Controller
-              name="bankAccount"
-              control={control}
-              defaultValue=""
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  label="Bank Account No."
-                  type="number"
-                  fullWidth
-                />
-              )}
-            />
 
             <Button type="submit" variant="contained" fullWidth>
               Register Employee
