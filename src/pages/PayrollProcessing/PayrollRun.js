@@ -9,24 +9,44 @@ import {
   Typography,
 } from "@mui/material";
 import axios from "axios";
+import { NumericFormat } from "react-number-format";
+import ConfirmationDialog from "../../components/ConfirmationDialog";
 
 export default function PayrollRun() {
   const [employees, setEmployees] = useState([]);
   const [totalDeductions, setTotalDeductions] = useState();
   const [totalEarning, setTotalEarning] = useState();
   const [pPeriod, setPperiod] = useState();
-  const [display, setDisplay] = useState(true);
+  const [display, setDisplay] = useState(false);
+  const [isReadonly, setIsreadonly] = useState(true);
+  const [open, setOpen] = useState(false);
+  const [pendingData, setPendingData] = useState();
+  const [errMessage, setErrmessage] = useState();
 
   const { control, reset, handleSubmit, watch, register, setValue } = useForm({
     defaultValues: {
       idNumber: "",
       screenName: "",
-      basicSalary: "",
+      basicSalary: 0,
     },
   });
 
   function onSubmit(data) {
+    if (data.from && data.to) {
+      if (data.grossPay === 0 || data.netPay === 0) {
+        setErrmessage("Invalid Gross/Net Pay");
+        setOpen(true);
+      }
+    }
+
+    const newData = { ...data, payrollPeriod: pPeriod };
+    setPendingData(newData);
+    console.log(newData);
     reset();
+  }
+
+  function confirmSubmit() {
+    setOpen(false);
   }
 
   const handleSelect = (e) => {
@@ -37,6 +57,9 @@ export default function PayrollRun() {
       setValue("screenName", emp.screenName);
       setValue("basicSalary", emp.basicSalary);
       // setValue("total", data.sss + data.philhealth);
+      setIsreadonly(false);
+    } else {
+      setIsreadonly(true);
     }
   };
 
@@ -52,7 +75,7 @@ export default function PayrollRun() {
     const totalEarnings =
       workDays * basicSalary + holiday + allowance + incentives + overtime;
 
-    setTotalEarning(totalEarnings);
+    // setTotalEarning(totalEarnings);
     setValue("grossPay", !totalEarnings ? 0 : totalEarnings.toLocaleString());
     // setValue("overtimeCost", overtime);
     setValue("overtimeCostDisplay", !overtime ? 0 : overtime.toLocaleString());
@@ -103,10 +126,9 @@ export default function PayrollRun() {
       year: "numeric",
     })}`;
     setPperiod(range);
-    if (!from) {
-      alert("Invalid Start Date");
-    } else if (!to) {
-      alert("Invalid End Date");
+    if (!from || !to) {
+      setErrmessage("Invalid Date Range");
+      setOpen(true);
     } else {
       setValue("period", range);
       setDisplay(true);
@@ -138,27 +160,46 @@ export default function PayrollRun() {
     watch("netPay"),
   ]);
 
+  function disableInput(params) {
+    return {
+      sx: {
+        backgroundColor: params ? "#ecececff" : "inherit",
+      },
+      InputProps: params ? { readOnly: true } : {},
+    };
+  }
+
   return (
-    <Paper sx={{ p: 2 }}>
+    <>
+      <ConfirmationDialog
+        open={open}
+        title="Error"
+        message={errMessage}
+        onConfirm={confirmSubmit}
+        // onCancel={() => setOpen(false)}
+      />
       <form onSubmit={handleSubmit(onSubmit)}>
         <Stack>
-          <Typography variant="h6">
-            Payroll Period{" "}
-            {display && (
-              <>
-                - {pPeriod}
-                <Button
-                  onClick={() => setDisplay(false)}
-                  sx={{ ml: 2 }}
-                  variant="contained"
-                >
-                  Edit
-                </Button>
-              </>
-            )}
-          </Typography>
+          {display && (
+            <Stack direction="column">
+              <Typography variant="h6" align="right">
+                Payroll Period - {pPeriod}
+              </Typography>
+              <Button
+                onClick={() => setDisplay(false)}
+                sx={{ width: "10%", ml: 2, alignSelf: "end" }}
+                variant="contained"
+              >
+                Edit
+              </Button>
+            </Stack>
+          )}
+
           {display || (
             <>
+              <Typography align="center" variant="h6">
+                Please select a payroll range
+              </Typography>
               <Stack direction="row" spacing={2}>
                 <Stack
                   direction="column"
@@ -209,7 +250,7 @@ export default function PayrollRun() {
                     <TextField
                       {...field}
                       select
-                      label="Select Employee ID"
+                      label="Please select an employee ID to begin"
                       fullWidth
                       margin="normal"
                       onChange={(e) => {
@@ -245,13 +286,19 @@ export default function PayrollRun() {
                 <Controller
                   name="basicSalary"
                   control={control}
+                  defaultValue={0}
                   render={({ field }) => (
-                    <TextField
+                    <NumericFormat
                       {...field}
+                      customInput={TextField}
                       label="Basic Salary"
+                      thousandSeparator=","
+                      decimalScale={2} // always 2 decimals
+                      fixedDecimalScale // force .00 format
+                      allowNegative={false} // prevent negative input
                       fullWidth
                       margin="normal"
-                      InputProps={{ readOnly: true }} // 👈 read-only
+                      InputProps={{ readOnly: true }}
                       sx={{ backgroundColor: "#ecececff" }}
                     />
                   )}
@@ -260,14 +307,19 @@ export default function PayrollRun() {
                 <Controller
                   name="workDays"
                   control={control}
+                  defaultValue={0}
                   render={({ field }) => (
-                    <TextField
+                    <NumericFormat
                       {...field}
-                      onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                      type="number"
+                      customInput={TextField}
                       label="Work Days"
+                      thousandSeparator=","
+                      decimalScale={2} // always 2 decimals
+                      // fixedDecimalScale // force .00 format
+                      allowNegative={false} // prevent negative input
                       fullWidth
                       margin="normal"
+                      {...disableInput(isReadonly)}
                     />
                   )}
                 />
@@ -276,14 +328,19 @@ export default function PayrollRun() {
                   <Controller
                     name="overtime"
                     control={control}
+                    defaultValue={0}
                     render={({ field }) => (
-                      <TextField
+                      <NumericFormat
                         {...field}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                        type="number"
-                        label="Overtime in hours"
+                        customInput={TextField}
+                        label="Overtime"
+                        thousandSeparator=","
+                        decimalScale={2} // always 2 decimals
+                        // fixedDecimalScale // force .00 format
+                        allowNegative={false} // prevent negative input
+                        fullWidth
                         margin="normal"
-                        sx={{ width: "50%" }}
+                        {...disableInput(isReadonly)}
                       />
                     )}
                   />
@@ -291,12 +348,17 @@ export default function PayrollRun() {
                   <Controller
                     name="overtimeCostDisplay"
                     control={control}
+                    defaultValue={0}
                     render={({ field }) => (
-                      <TextField
+                      <NumericFormat
                         {...field}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                        type="text"
-                        // label="Overtime Cost"
+                        customInput={TextField}
+                        label="Overtime"
+                        thousandSeparator=","
+                        decimalScale={2} // always 2 decimals
+                        fixedDecimalScale // force .00 format
+                        allowNegative={false} // prevent negative input
+                        fullWidth
                         margin="normal"
                         sx={{ width: "50%", backgroundColor: "#ecececff" }}
                       />
@@ -309,12 +371,17 @@ export default function PayrollRun() {
                   control={control}
                   defaultValue={0}
                   render={({ field }) => (
-                    <TextField
+                    <NumericFormat
                       {...field}
-                      type="text"
-                      label="Holiday Pay"
+                      customInput={TextField}
+                      label="Holiday"
+                      thousandSeparator=","
+                      decimalScale={2} // always 2 decimals
+                      fixedDecimalScale // force .00 format
+                      allowNegative={false} // prevent negative input
                       fullWidth
                       margin="normal"
+                      {...disableInput(isReadonly)}
                     />
                   )}
                 />
@@ -324,13 +391,17 @@ export default function PayrollRun() {
                   control={control}
                   defaultValue={0}
                   render={({ field }) => (
-                    <TextField
+                    <NumericFormat
                       {...field}
-                      onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                      type="number"
+                      customInput={TextField}
                       label="Allowance"
+                      thousandSeparator=","
+                      decimalScale={2} // always 2 decimals
+                      fixedDecimalScale // force .00 format
+                      allowNegative={false} // prevent negative input
                       fullWidth
                       margin="normal"
+                      {...disableInput(isReadonly)}
                     />
                   )}
                 />
@@ -340,13 +411,17 @@ export default function PayrollRun() {
                   control={control}
                   defaultValue={0}
                   render={({ field }) => (
-                    <TextField
+                    <NumericFormat
                       {...field}
-                      onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                      type="number"
+                      customInput={TextField}
                       label="Incentives"
+                      thousandSeparator=","
+                      decimalScale={2} // always 2 decimals
+                      fixedDecimalScale // force .00 format
+                      allowNegative={false} // prevent negative input
                       fullWidth
                       margin="normal"
+                      {...disableInput(isReadonly)}
                     />
                   )}
                 />
@@ -356,15 +431,18 @@ export default function PayrollRun() {
                   control={control}
                   defaultValue={0}
                   render={({ field }) => (
-                    <TextField
+                    <NumericFormat
                       {...field}
-                      onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                      type="string"
-                      // label="Gross Pay"
+                      customInput={TextField}
+                      label="Gross Pay"
+                      thousandSeparator=","
+                      decimalScale={2} // always 2 decimals
+                      fixedDecimalScale // force .00 format
+                      allowNegative={false} // prevent negative input
                       fullWidth
                       margin="normal"
-                      InputProps={{ readOnly: true }}
                       sx={{ backgroundColor: "#ecececff" }}
+                      InputProps={{ readOnly: true }}
                     />
                   )}
                 />
@@ -376,16 +454,17 @@ export default function PayrollRun() {
                   control={control}
                   defaultValue={0}
                   render={({ field }) => (
-                    <TextField
+                    <NumericFormat
                       {...field}
-                      onChange={(e) => {
-                        const value = e.target.valueAsNumber;
-                        field.onChange(value);
-                      }}
-                      type="number"
+                      customInput={TextField}
                       label="SSS"
+                      thousandSeparator=","
+                      decimalScale={2} // always 2 decimals
+                      fixedDecimalScale // force .00 format
+                      allowNegative={false} // prevent negative input
                       fullWidth
                       margin="normal"
+                      {...disableInput(isReadonly)}
                     />
                   )}
                 />
@@ -394,16 +473,17 @@ export default function PayrollRun() {
                   control={control}
                   defaultValue={0}
                   render={({ field }) => (
-                    <TextField
+                    <NumericFormat
                       {...field}
-                      onChange={(e) => {
-                        const value = e.target.valueAsNumber;
-                        field.onChange(value);
-                      }}
-                      type="number"
-                      label="Philhealth"
+                      customInput={TextField}
+                      label="Phil Health"
+                      thousandSeparator=","
+                      decimalScale={2} // always 2 decimals
+                      fixedDecimalScale // force .00 format
+                      allowNegative={false} // prevent negative input
                       fullWidth
                       margin="normal"
+                      {...disableInput(isReadonly)}
                     />
                   )}
                 />
@@ -412,13 +492,17 @@ export default function PayrollRun() {
                   control={control}
                   defaultValue={0}
                   render={({ field }) => (
-                    <TextField
+                    <NumericFormat
                       {...field}
-                      onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                      type="number"
+                      customInput={TextField}
                       label="Pagibig"
+                      thousandSeparator=","
+                      decimalScale={2} // always 2 decimals
+                      fixedDecimalScale // force .00 format
+                      allowNegative={false} // prevent negative input
                       fullWidth
                       margin="normal"
+                      {...disableInput(isReadonly)}
                     />
                   )}
                 />
@@ -427,13 +511,17 @@ export default function PayrollRun() {
                   control={control}
                   defaultValue={0}
                   render={({ field }) => (
-                    <TextField
+                    <NumericFormat
                       {...field}
-                      onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                      type="number"
+                      customInput={TextField}
                       label="SSS Loans"
+                      thousandSeparator=","
+                      decimalScale={2} // always 2 decimals
+                      fixedDecimalScale // force .00 format
+                      allowNegative={false} // prevent negative input
                       fullWidth
                       margin="normal"
+                      {...disableInput(isReadonly)}
                     />
                   )}
                 />
@@ -442,13 +530,17 @@ export default function PayrollRun() {
                   control={control}
                   defaultValue={0}
                   render={({ field }) => (
-                    <TextField
+                    <NumericFormat
                       {...field}
-                      onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                      type="number"
+                      customInput={TextField}
                       label="Cash Advance"
+                      thousandSeparator=","
+                      decimalScale={2} // always 2 decimals
+                      fixedDecimalScale // force .00 format
+                      allowNegative={false} // prevent negative input
                       fullWidth
                       margin="normal"
+                      {...disableInput(isReadonly)}
                     />
                   )}
                 />
@@ -457,13 +549,17 @@ export default function PayrollRun() {
                   control={control}
                   defaultValue={0}
                   render={({ field }) => (
-                    <TextField
+                    <NumericFormat
                       {...field}
-                      onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                      type="number"
+                      customInput={TextField}
                       label="Loans"
+                      thousandSeparator=","
+                      decimalScale={2} // always 2 decimals
+                      fixedDecimalScale // force .00 format
+                      allowNegative={false} // prevent negative input
                       fullWidth
                       margin="normal"
+                      {...disableInput(isReadonly)}
                     />
                   )}
                 />
@@ -473,13 +569,17 @@ export default function PayrollRun() {
                   control={control}
                   defaultValue={0}
                   render={({ field }) => (
-                    <TextField
+                    <NumericFormat
                       {...field}
-                      onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                      type="number"
-                      label="others"
+                      customInput={TextField}
+                      label="Others"
+                      thousandSeparator=","
+                      decimalScale={2} // always 2 decimals
+                      fixedDecimalScale // force .00 format
+                      allowNegative={false} // prevent negative input
                       fullWidth
                       margin="normal"
+                      {...disableInput(isReadonly)}
                     />
                   )}
                 />
@@ -487,16 +587,20 @@ export default function PayrollRun() {
                 <Controller
                   name="totalDeductions"
                   control={control}
+                  defaultValue={0}
                   render={({ field }) => (
-                    <TextField
+                    <NumericFormat
                       {...field}
-                      // value={totalDeductions}
-                      type="string"
-                      // label="Total Deductions"
+                      customInput={TextField}
+                      label="Total Deductions"
+                      thousandSeparator=","
+                      decimalScale={2} // always 2 decimals
+                      fixedDecimalScale // force .00 format
+                      allowNegative={false} // prevent negative input
                       fullWidth
                       margin="normal"
-                      InputProps={{ readOnly: true }}
                       sx={{ backgroundColor: "#ecececff" }}
+                      InputProps={{ readOnly: true }}
                     />
                   )}
                 />
@@ -506,13 +610,18 @@ export default function PayrollRun() {
                   control={control}
                   defaultValue={0}
                   render={({ field }) => (
-                    <TextField
+                    <NumericFormat
                       {...field}
-                      type="string"
+                      customInput={TextField}
+                      label="Net Pay"
+                      thousandSeparator=","
+                      decimalScale={2} // always 2 decimals
+                      fixedDecimalScale // force .00 format
+                      allowNegative={false} // prevent negative input
                       fullWidth
                       margin="normal"
-                      InputProps={{ readOnly: true }}
                       sx={{ backgroundColor: "#ecececff" }}
+                      InputProps={{ readOnly: true }}
                     />
                   )}
                 />
@@ -520,13 +629,13 @@ export default function PayrollRun() {
             </Stack>
 
             <Stack sx={{ margin: "auto", width: "25%" }}>
-              <Button type="submit" variant="contained">
+              <Button disabled={isReadonly} type="submit" variant="contained">
                 Submit
               </Button>
             </Stack>
           </>
         )}
       </form>
-    </Paper>
+    </>
   );
 }
