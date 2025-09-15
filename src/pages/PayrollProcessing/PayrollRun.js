@@ -11,6 +11,7 @@ import {
 import axios from "axios";
 import { NumericFormat } from "react-number-format";
 import ConfirmationDialog from "../../components/ConfirmationDialog";
+import toast, { Toaster } from "react-hot-toast";
 
 export default function PayrollRun() {
   const [employees, setEmployees] = useState([]);
@@ -23,7 +24,7 @@ export default function PayrollRun() {
   const [pendingData, setPendingData] = useState();
   const [errMessage, setErrmessage] = useState();
 
-  const { control, reset, handleSubmit, watch, register, setValue } = useForm({
+  const { control, reset, handleSubmit, watch, getValues, setValue } = useForm({
     defaultValues: {
       idNumber: "",
       screenName: "",
@@ -31,18 +32,63 @@ export default function PayrollRun() {
     },
   });
 
-  function onSubmit(data) {
+  async function onSubmit(data) {
     if (data.from && data.to) {
-      if (data.grossPay === 0 || data.netPay === 0) {
-        setErrmessage("Invalid Gross/Net Pay");
-        setOpen(true);
-      }
+      setDisplay(true);
     }
 
+    // if (!data.grossPay || !data.netPay) {
+    //   setErrmessage("Invalid Net/Gross Pay");
+    //   setOpen(true);
+    //   return;
+    // }
+
     const newData = { ...data, payrollPeriod: pPeriod };
-    setPendingData(newData);
-    console.log(newData);
-    reset();
+
+    const payload = {
+      ...newData,
+      idNumber: parseFloat(newData.idNumber),
+      screenName: newData.screenName,
+      basicSalary: newData.basicSalary,
+      workDays: parseFloat(newData.workDays),
+      overtime: parseFloat(newData.overtime),
+      overtimeCostDisplay: parseFloat(newData.overtimeCostDisplay),
+      holiday: parseFloat(newData.holiday),
+      allowance: parseFloat(newData.allowance),
+      incentives: parseFloat(newData.incentives),
+      grossPay: parseFloat(newData.grossPay),
+      sss: parseFloat(newData.sss),
+      philhealth: parseFloat(newData.philhealth),
+      pagibig: parseFloat(newData.pagibig),
+      sssLoans: parseFloat(newData.sssLoans),
+      cashAdvance: parseFloat(newData.cashAdvance),
+      loans: parseFloat(newData.loans),
+      others: parseFloat(newData.others),
+      totalDeductions: parseFloat(newData.totalDeductions),
+      netPay: parseFloat(newData.netPay),
+      payrollPeriod: newData.payrollPeriod,
+    };
+
+    setPendingData(payload);
+
+    try {
+      if (!payload.grossPay || !payload.netPay) {
+        setErrmessage("Invalid Net/Gross Pay");
+        setOpen(true);
+        return;
+      } else {
+        const res = await axios.post(
+          "http://localhost:5000/api/payroll",
+          payload
+        );
+        res && toast.success("Successfully Added!");
+
+        reset();
+        setIsreadonly(true);
+      }
+    } catch (error) {
+      toast.error("Error inserting data");
+    }
   }
 
   function confirmSubmit() {
@@ -118,11 +164,11 @@ export default function PayrollRun() {
     const to = watch("to");
     const range = `${new Date(from).toLocaleDateString("en-US", {
       day: "numeric",
-      month: "long",
+      month: "numeric",
       year: "numeric",
     })} - ${new Date(to).toLocaleDateString("en-US", {
       day: "numeric",
-      month: "long",
+      month: "numeric",
       year: "numeric",
     })}`;
     setPperiod(range);
@@ -160,6 +206,15 @@ export default function PayrollRun() {
     watch("netPay"),
   ]);
 
+  function handleEdit() {
+    setDisplay(false);
+
+    if (!pendingData.from && !pendingData.to) {
+      setDisplay(false);
+      setErrmessage("Invalid Date Range");
+    }
+  }
+
   function disableInput(params) {
     return {
       sx: {
@@ -171,6 +226,7 @@ export default function PayrollRun() {
 
   return (
     <>
+      <Toaster />
       <ConfirmationDialog
         open={open}
         title="Error"
@@ -186,7 +242,7 @@ export default function PayrollRun() {
                 Payroll Period - {pPeriod}
               </Typography>
               <Button
-                onClick={() => setDisplay(false)}
+                onClick={handleEdit}
                 sx={{ width: "10%", ml: 2, alignSelf: "end" }}
                 variant="contained"
               >
