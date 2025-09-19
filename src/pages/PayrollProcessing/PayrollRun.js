@@ -122,7 +122,8 @@ export default function PayrollRun() {
       workDays * basicSalary + holiday + allowance + incentives + overtime;
 
     // setTotalEarning(totalEarnings);
-    setValue("grossPay", !totalEarnings ? 0 : totalEarnings.toLocaleString());
+    // setValue("grossPay", !totalEarnings ? 0 : totalEarnings.toLocaleString());
+    setValue("grossPay", totalEarnings);
     // setValue("overtimeCost", overtime);
     setValue("overtimeCostDisplay", !overtime ? 0 : overtime.toLocaleString());
   }
@@ -156,7 +157,7 @@ export default function PayrollRun() {
 
     const net = totalEarnings - totalDeductions;
 
-    setValue("netPay", net.toLocaleString());
+    setValue("netPay", net);
   }
 
   function handleSet() {
@@ -209,7 +210,7 @@ export default function PayrollRun() {
   function handleEdit() {
     setDisplay(false);
 
-    if (!pendingData.from && !pendingData.to) {
+    if (!pendingData?.from && !pendingData?.to) {
       setDisplay(false);
       setErrmessage("Invalid Date Range");
     }
@@ -234,7 +235,7 @@ export default function PayrollRun() {
         onConfirm={confirmSubmit}
         // onCancel={() => setOpen(false)}
       />
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form onSubmit={handleSubmit(handleSet)}>
         <Stack>
           {display && (
             <Stack direction="column">
@@ -293,6 +294,66 @@ export default function PayrollRun() {
             </>
           )}
         </Stack>
+      </form>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        {/* <Stack>
+          {display && (
+            <Stack direction="column">
+              <Typography variant="h6" align="right">
+                Payroll Period - {pPeriod}
+              </Typography>
+              <Button
+                onClick={handleEdit}
+                sx={{ width: "10%", ml: 2, alignSelf: "end" }}
+                variant="contained"
+              >
+                Edit
+              </Button>
+            </Stack>
+          )}
+
+          {display || (
+            <>
+              <Typography align="center" variant="h6">
+                Please select a payroll range
+              </Typography>
+              <Stack direction="row" spacing={2}>
+                <Stack
+                  direction="column"
+                  sx={{ flexGrow: 1, textAlign: "center" }}
+                >
+                  <Controller
+                    name="from"
+                    control={control}
+                    defaultValue=""
+                    render={({ field }) => <TextField {...field} type="date" />}
+                  />
+                  <Typography variant="h6">From</Typography>
+                </Stack>
+                <Stack
+                  direction="column"
+                  sx={{ flexGrow: 1, textAlign: "center" }}
+                >
+                  <Controller
+                    name="to"
+                    control={control}
+                    defaultValue=""
+                    render={({ field }) => <TextField {...field} type="date" />}
+                  />
+                  <Typography variant="h6">To</Typography>
+                </Stack>
+              </Stack>
+              <Button
+                type="submit"
+                variant="contained"
+                sx={{ m: "auto", width: "25%" }}
+                onClick={handleSet}
+              >
+                Set
+              </Button>
+            </>
+          )}
+        </Stack> */}
         {display && (
           <>
             <Stack direction="row" spacing={2}></Stack>
